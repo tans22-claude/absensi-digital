@@ -32,7 +32,7 @@ export default function ReportsPage() {
     queryKey: ['report', classId, startDate, endDate],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (classId) params.append('classId', classId);
+      if (classId && classId !== 'all') params.append('classId', classId);
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
 
@@ -69,7 +69,7 @@ export default function ReportsPage() {
 
     try {
       const params = new URLSearchParams();
-      if (classId) params.append('classId', classId);
+      if (classId && classId !== 'all') params.append('classId', classId);
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
       params.append('format', format);
@@ -128,7 +128,7 @@ export default function ReportsPage() {
                   <SelectValue placeholder="Semua kelas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Semua kelas</SelectItem>
+                  <SelectItem value="all">Semua kelas</SelectItem>
                   {classes?.map((cls: any) => (
                     <SelectItem key={cls.id} value={cls.id}>
                       {cls.name} - {cls.grade}
