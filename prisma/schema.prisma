@@ -1,0 +1,305 @@
+// Prisma Schema for Secure Attendance App
+// Database: PostgreSQL
+// ORM: Prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User roles enum
+enum UserRole {
+  SUPERADMIN
+  ADMIN
+  TEACHER
+  STUDENT
+  PARENT
+}
+
+// Attendance status enum
+enum AttendanceStatus {
+  PRESENT
+  SICK
+  PERMISSION
+  ABSENT
+}
+
+// Audit action types
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  EXPORT
+}
+
+// Users table - handles authentication and authorization
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  passwordHash  String    @map("password_hash")
+  role          UserRole  @default(STUDENT)
+  schoolId      String?   @map("school_id")
+  totpSecret    String?   @map("totp_secret") // For 2FA
+  totpEnabled   Boolean   @default(false) @map("totp_enabled")
+  emailVerified DateTime? @map("email_verified")
+  image         String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  lastLoginAt   DateTime? @map("last_login_at")
+  isActive      Boolean   @default(true) @map("is_active")
+
+  // Relations
+  school              School?             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  accounts            Account[]
+  sessions            Session[]
+  teacherClasses      Class[]             @relation("TeacherClasses")
+  studentProfile      Student?
+  parentChildren      Student[]           @relation("ParentRelation")
+  attendanceRecords   Attendance[]        @relation("RecordedBy")
+  auditLogs           AuditLog[]
+  notifications       Notification[]
+
+  @@index([email])
+  @@index([schoolId])
+  @@map("users")
+}
+
+// NextAuth Account model
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+// NextAuth Session model
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// Verification tokens for email verification and password reset
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// Schools table - multi-tenant support
+model School {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  timezone  String   @default("Asia/Jakarta")
+  logo      String?
+  phone     String?
+  email     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  isActive  Boolean  @default(true) @map("is_active")
+
+  // Relations
+  users     User[]
+  classes   Class[]
+  students  Student[]
+  schedules Schedule[]
+
+  @@map("schools")
+}
+
+// Classes table
+model Class {
+  id        String   @id @default(cuid())
+  schoolId  String   @map("school_id")
+  name      String
+  grade     String
+  teacherId String?  @map("teacher_id")
+  academicYear String @map("academic_year")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  isActive  Boolean  @default(true) @map("is_active")
+
+  // Relations
+  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher     User?        @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: SetNull)
+  students    Student[]
+  schedules   Schedule[]
+  attendances Attendance[]
+
+  @@index([schoolId])
+  @@index([teacherId])
+  @@map("classes")
+}
+
+// Students table
+model Student {
+  id        String   @id @default(cuid())
+  schoolId  String   @map("school_id")
+  userId    String?  @unique @map("user_id") // Optional link to User account
+  classId   String   @map("class_id")
+  nis       String   @unique // Student ID Number
+  name      String
+  photoUrl  String?  @map("photo_url")
+  parentId  String?  @map("parent_id")
+  dateOfBirth DateTime? @map("date_of_birth")
+  gender    String?
+  address   String?
+  phone     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  isActive  Boolean  @default(true) @map("is_active")
+
+  // Relations
+  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  class       Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  parent      User?        @relation("ParentRelation", fields: [parentId], references: [id], onDelete: SetNull)
+  attendances Attendance[]
+
+  @@index([schoolId])
+  @@index([classId])
+  @@index([nis])
+  @@map("students")
+}
+
+// Schedules table - class timetable
+model Schedule {
+  id          String   @id @default(cuid())
+  schoolId    String   @map("school_id")
+  classId     String   @map("class_id")
+  subject     String
+  dayOfWeek   Int      @map("day_of_week") // 0=Sunday, 1=Monday, etc.
+  startTime   String   @map("start_time") // Format: "HH:mm"
+  endTime     String   @map("end_time")   // Format: "HH:mm"
+  teacherId   String?  @map("teacher_id")
+  room        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  isActive    Boolean  @default(true) @map("is_active")
+
+  // Relations
+  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class       Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  attendances Attendance[]
+
+  @@index([schoolId])
+  @@index([classId])
+  @@index([dayOfWeek])
+  @@map("schedules")
+}
+
+// Attendance records table
+model Attendance {
+  id         String           @id @default(cuid())
+  studentId  String           @map("student_id")
+  classId    String           @map("class_id")
+  scheduleId String?          @map("schedule_id")
+  date       DateTime         @db.Date
+  status     AttendanceStatus
+  recordedBy String           @map("recorded_by")
+  recordedAt DateTime         @default(now()) @map("recorded_at")
+  note       String?
+  method     String?          // "QR_SCAN" or "MANUAL"
+  latitude   Float?
+  longitude  Float?
+  synced     Boolean          @default(true) // For offline sync tracking
+
+  // Relations
+  student  Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class    Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  schedule Schedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  recorder User      @relation("RecordedBy", fields: [recordedBy], references: [id])
+
+  @@unique([studentId, date, scheduleId])
+  @@index([studentId])
+  @@index([classId])
+  @@index([date])
+  @@index([recordedBy])
+  @@map("attendance")
+}
+
+// Audit logs for tracking changes
+model AuditLog {
+  id         String      @id @default(cuid())
+  userId     String      @map("user_id")
+  action     AuditAction
+  targetType String      @map("target_type") // e.g., "Student", "Attendance", "User"
+  targetId   String      @map("target_id")
+  oldValue   Json?       @map("old_value")
+  newValue   Json?       @map("new_value")
+  ipAddress  String?     @map("ip_address")
+  userAgent  String?     @map("user_agent")
+  timestamp  DateTime    @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([targetType, targetId])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
+
+// Notifications table
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  title     String
+  message   String   @db.Text
+  type      String   // "INFO", "WARNING", "ERROR", "SUCCESS"
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// Offline sync queue for attendance records
+model SyncQueue {
+  id        String   @id @default(cuid())
+  data      Json
+  type      String   // "ATTENDANCE", "UPDATE", etc.
+  status    String   @default("PENDING") // "PENDING", "SYNCED", "FAILED"
+  retries   Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  syncedAt  DateTime? @map("synced_at")
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("sync_queue")
+}
