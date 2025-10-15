@@ -5,7 +5,6 @@
 
 import { withAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 
 // Rate limiting store (in-memory, use Redis in production)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
@@ -28,8 +27,8 @@ function rateLimit(ip: string, maxRequests = 100, windowMs = 15 * 60 * 1000): bo
 }
 
 export default withAuth(
-  function middleware(req: NextRequest) {
-    const token = req.nextauth.token;
+  function middleware(req) {
+    const token = req.nextauth?.token;
     const path = req.nextUrl.pathname;
 
     // Rate limiting
