@@ -3,34 +3,28 @@
  * Handles offline attendance recording and synchronization
  */
 
-import { openDB, DBSchema, IDBPDatabase } from 'idb';
+import { openDB, IDBPDatabase } from 'idb';
 
-interface AttendanceDB extends DBSchema {
-  attendance: {
-    key: string;
-    value: {
-      id: string;
-      studentId: string;
-      classId: string;
-      scheduleId?: string;
-      date: string;
-      status: string;
-      note?: string;
-      method: string;
-      timestamp: number;
-      synced: boolean;
-    };
-    indexes: { 'by-synced': boolean };
-  };
+interface AttendanceRecord {
+  id: string;
+  studentId: string;
+  classId: string;
+  scheduleId?: string;
+  date: string;
+  status: string;
+  note?: string;
+  method: string;
+  timestamp: number;
+  synced: boolean;
 }
 
 class OfflineSyncManager {
-  private db: IDBPDatabase<AttendanceDB> | null = null;
+  private db: IDBPDatabase | null = null;
 
   async init() {
     if (this.db) return;
 
-    this.db = await openDB<AttendanceDB>('attendance-offline', 1, {
+    this.db = await openDB('attendance-offline', 1, {
       upgrade(db) {
         const store = db.createObjectStore('attendance', { keyPath: 'id' });
         store.createIndex('by-synced', 'synced');
@@ -64,7 +58,7 @@ class OfflineSyncManager {
     await this.init();
     const tx = this.db!.transaction('attendance', 'readonly');
     const index = tx.store.index('by-synced');
-    return await index.getAll(false);
+    return await index.getAll(IDBKeyRange.only(false));
   }
 
   async markAsSynced(id: string) {
@@ -127,7 +121,7 @@ class OfflineSyncManager {
     await this.init();
     const tx = this.db!.transaction('attendance', 'readwrite');
     const index = tx.store.index('by-synced');
-    const synced = await index.getAll(true);
+    const synced = await index.getAll(IDBKeyRange.only(true));
 
     for (const record of synced) {
       await tx.store.delete(record.id);
