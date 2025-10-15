@@ -207,12 +207,20 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <p className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
-            Belum punya akun?{' '}
-            <Link href="/auth/register" className="text-blue-600 hover:underline">
-              Daftar sekarang
-            </Link>
-          </p>
+          <div className="mt-4 space-y-2">
+            <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+              Belum punya akun?{' '}
+              <Link href="/auth/register" className="text-blue-600 hover:underline">
+                Daftar sekarang
+              </Link>
+            </p>
+            <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+              Siswa baru?{' '}
+              <Link href="/registration" className="text-green-600 hover:underline font-semibold">
+                Daftar sebagai Siswa Baru
+              </Link>
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

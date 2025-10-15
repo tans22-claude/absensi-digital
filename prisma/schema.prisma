@@ -129,10 +129,11 @@ model School {
   isActive  Boolean  @default(true) @map("is_active")
 
   // Relations
-  users     User[]
-  classes   Class[]
-  students  Student[]
-  schedules Schedule[]
+  users                 User[]
+  classes               Class[]
+  students              Student[]
+  schedules             Schedule[]
+  studentRegistrations  StudentRegistration[]
 
   @@map("schools")
 }
@@ -302,4 +303,44 @@ model SyncQueue {
   @@index([status])
   @@index([createdAt])
   @@map("sync_queue")
+}
+
+// Student Registration - for new student enrollment
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+model StudentRegistration {
+  id                String              @id @default(cuid())
+  fullName          String              @map("full_name")
+  nisn              String              @unique // Nomor Induk Siswa Nasional
+  gender            Gender
+  birthPlace        String              @map("birth_place")
+  birthDate         DateTime            @map("birth_date")
+  address           String              @db.Text
+  parentName        String              @map("parent_name")
+  parentPhone       String              @map("parent_phone")
+  targetGrade       String              @map("target_grade") // Kelas yang dituju
+  email             String              @unique
+  passwordHash      String              @map("password_hash")
+  status            RegistrationStatus  @default(PENDING)
+  schoolId          String?             @map("school_id")
+  school            School?             @relation(fields: [schoolId], references: [id])
+  registeredAt      DateTime            @default(now()) @map("registered_at")
+  processedAt       DateTime?           @map("processed_at")
+  processedBy       String?             @map("processed_by")
+  rejectionReason   String?             @map("rejection_reason") @db.Text
+  notes             String?             @db.Text
+  
+  @@index([status])
+  @@index([schoolId])
+  @@index([registeredAt])
+  @@map("student_registrations")
 }

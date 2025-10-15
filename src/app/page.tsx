@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle, QrCode, BarChart3, Shield, Clock, Users } from 'lucide-react';
+import { CheckCircle, QrCode, BarChart3, Shield, Clock, Users, GraduationCap } from 'lucide-react';
 
 export default function HomePage() {
   return (
@@ -16,7 +16,7 @@ export default function HomePage() {
           <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
             Kelola kehadiran siswa dengan mudah menggunakan teknologi QR Code dan dashboard real-time
           </p>
-          <div className="flex gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link href="/auth/login">
               <Button size="lg" className="text-lg px-8">
                 Masuk
@@ -25,6 +25,12 @@ export default function HomePage() {
             <Link href="/auth/register">
               <Button size="lg" variant="outline" className="text-lg px-8">
                 Daftar
+              </Button>
+            </Link>
+            <Link href="/registration">
+              <Button size="lg" variant="default" className="text-lg px-8 bg-green-600 hover:bg-green-700">
+                <GraduationCap className="mr-2 h-5 w-5" />
+                Pendaftaran Siswa Baru
               </Button>
             </Link>
           </div>
