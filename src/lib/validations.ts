@@ -127,10 +127,12 @@ export const reportFilterSchema = z.object({
 
 // CSV import schema
 export const csvImportSchema = z.object({
-  file: z.instanceof(File).refine(
-    (file) => file.type === 'text/csv' || file.name.endsWith('.csv'),
-    'File harus berformat CSV'
-  ),
+  file: typeof File !== 'undefined' 
+    ? z.instanceof(File).refine(
+        (file) => file.type === 'text/csv' || file.name.endsWith('.csv'),
+        'File harus berformat CSV'
+      )
+    : z.any(),
   classId: z.string().min(1, 'Kelas harus dipilih'),
 });
 
