@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { AuditAction, Prisma } from '@prisma/client';
 
 export async function GET(req: NextRequest) {
   try {
@@ -65,32 +64,5 @@ export async function GET(req: NextRequest) {
       { error: 'Internal server error' },
       { status: 500 }
     );
-  }
-}
-
-// Helper function to create audit log
-export async function createAuditLog(
-  userId: string,
-  action: AuditAction,
-  targetType: string,
-  targetId: string,
-  oldValue?: any,
-  newValue?: any,
-  ipAddress?: string
-) {
-  try {
-    await prisma.auditLog.create({
-      data: {
-        userId,
-        action,
-        targetType,
-        targetId,
-        oldValue: oldValue ? oldValue as Prisma.InputJsonValue : Prisma.JsonNull,
-        newValue: newValue ? newValue as Prisma.InputJsonValue : Prisma.JsonNull,
-        ipAddress,
-      },
-    });
-  } catch (error) {
-    console.error('Error creating audit log:', error);
   }
 }
